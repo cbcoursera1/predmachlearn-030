@@ -1,0 +1,86 @@
+---
+title: "Machine Learning - Classification of Exercises"
+author: "cbcoursera1"
+date: "Saturday, July 11, 2015"
+output: html_document
+---
+
+```{r}
+
+# Libraries
+
+library(data.table)
+library(caret)
+#library(doParallel)
+#registerDoParallel(cores=3)
+
+# Seed
+
+set.seed(8675309)
+
+```
+
+```{r}
+
+# Get data
+
+# download.file("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv", destfile = "pml-training.csv")
+# download.file("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv", destfile = "pml-testing.csv")
+# download.file("http://groupware.les.inf.puc-rio.br/public/papers/2013.Velloso.QAR-WLE.pdf", destfile = "databook.pdf", "wininet") # databook
+
+# Read data into dat.table, drop row number
+
+training <- fread("pml-training.csv", data.table = T)[, 1:160, with = F]
+testing <- fread("pml-testing.csv", data.table = T)[, 1:160, with = F]
+setkey(training, new_window)
+setkey(testing, new_window)
+
+# Get rid of new window data in training
+
+training <- training["no"]
+
+setkey(training, V1)
+setkey(testing, V1)
+
+# Segment out applicable variables in training
+
+training <- training[, c(2, 3, 8:11, 37:49, 60:68, 84:86, 102, 113:124, 140, 151:160), with = F]
+
+# Split training into train and test
+
+inTrain <- createDataPartition(y = training$classe, p = 0.6, list = F)
+train.train <- training[as.vector(inTrain)]
+train.test <- training[as.vector(-inTrain)]
+
+```
+
+```{r}
+
+# First pre-process
+
+models <- list("gbm" = list("pp" = c(), model = c()))
+
+# models$gbm$pp <- preProcess(x = train.train[,!c(1,55), with = F], method = "pca", thresh = .8)
+
+# Try training for fun
+
+models$gmb$model <- train(classe ~ ., method = "gbm", data=train.train, preProcess = "pca", verbose = T)
+
+```
+
+```{r}
+
+# Save and load training models
+
+saveRDS(models, file="models.rds")
+models = readRDS("models.rds")
+
+```
+
+# APPENDIX
+
+Citation:
+
+Velloso, E.; Bulling, A.; Gellersen, H.; Ugulino, W.; Fuks, H. Qualitative Activity Recognition of Weight Lifting Exercises. Proceedings of 4th International Conference in Cooperation with SIGCHI (Augmented Human '13) . Stuttgart, Germany: ACM SIGCHI, 2013.
+
+Read more: http://groupware.les.inf.puc-rio.br/har#dataset#ixzz3fcXZS8WB
