@@ -11,8 +11,8 @@ output: html_document
 
 library(data.table)
 library(caret)
-#library(doParallel)
-#registerDoParallel(cores=3)
+library(doParallel)
+registerDoParallel(cores=2)
 
 # Seed
 
@@ -61,17 +61,17 @@ train.test <- training[as.vector(-inTrain)]
 
 ```{r}
 
-models <- list("rf" = list("pp" = c(), model = c()))
+models <- list("rf" = list(model = c()))
 
 # Try training for fun
 
-models$rf$model <- train(classe ~ ., method = "rf", preProcess = "pca", data = as.data.frame(train.train[as.vector(createDataPartition(y = training$classe, p = scale, list = F))]))
+models$rfPCA$model <- train(classe ~ ., method = "rf", preProcess = "pca", data = as.data.frame(train.train[as.vector(createDataPartition(y = train.train$classe, p = scale, list = F))]))
 
-models$rf$conf <- confusionMatrix(train.test$classe, predict(object = models$rf$model, newdata = train.test)) 
+models$rfPCA$conf <- confusionMatrix(train.test$classe, predict(object = models$rfPCA$model, newdata = train.test)) 
 
-models$gbm$model <- train(classe ~ ., method = "gbm", preProcess = "pca", data = as.data.frame(train.train[as.vector(createDataPartition(y = training$classe, p = scale, list = F))]))
+models$gbmPCA$model <- train(classe ~ ., method = "gbm", preProcess = "pca", data = as.data.frame(train.train[as.vector(createDataPartition(y = train.train$classe, p = scale, list = F))]))
 
-models$rf$conf <- confusionMatrix(train.test$classe, predict(object = models$gbm$model, newdata = train.test))
+models$gbmPCA$conf <- confusionMatrix(train.test$classe, predict(object = models$gbmPCA$model, newdata = train.test))
 
 ```
 
