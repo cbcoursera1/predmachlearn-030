@@ -22,6 +22,16 @@ set.seed(8675309)
 
 scale <- 0.01
 
+# Write solutions
+ 
+pml_write_files = function(x){
+  n = length(x)
+  for(i in 1:n){
+    filename = paste0("solutions/problem_id_",i,".txt")
+    write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
+  }
+}
+
 ```
 
 ```{r}
@@ -81,6 +91,16 @@ models$gbmPCA$conf <- confusionMatrix(train.test$classe, predict(object = models
 
 saveRDS(models, file="models.rds")
 models <- readRDS("models.rds")
+
+```
+
+```{r}
+
+# Solutions
+
+testing$classe <- predict(object = models$rfPCA$model, newdata = testing)
+
+pml_write_files(testing[, classe])
 
 ```
 
