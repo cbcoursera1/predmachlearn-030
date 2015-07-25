@@ -18,6 +18,10 @@ library(caret)
 
 set.seed(8675309)
 
+# Scale of models
+
+scale <- 0.01
+
 ```
 
 ```{r}
@@ -34,6 +38,7 @@ training <- fread("pml-training.csv", data.table = T)[, 1:160, with = F]
 testing <- fread("pml-testing.csv", data.table = T)[, 1:160, with = F]
 setkey(training, new_window)
 setkey(testing, new_window)
+training$classe <- as.factor(training$classe)
 
 # Get rid of new window data in training
 
@@ -44,7 +49,7 @@ setkey(testing, V1)
 
 # Segment out applicable variables in training
 
-training <- training[, c(2, 3, 8:11, 37:49, 60:68, 84:86, 102, 113:124, 140, 151:160), with = F]
+training <- training[, c(3, 8:11, 37:49, 60:68, 84:86, 102, 113:124, 140, 151:160), with = F]
 
 # Split training into train and test
 
@@ -56,15 +61,17 @@ train.test <- training[as.vector(-inTrain)]
 
 ```{r}
 
-# First pre-process
-
-models <- list("gbm" = list("pp" = c(), model = c()))
-
-# models$gbm$pp <- preProcess(x = train.train[,!c(1,55), with = F], method = "pca", thresh = .8)
+models <- list("rf" = list("pp" = c(), model = c()))
 
 # Try training for fun
 
-models$gmb$model <- train(classe ~ ., method = "gbm", data=train.train, preProcess = "pca", verbose = T)
+models$rf$model <- train(classe ~ ., method = "rf", preProcess = "pca", data = as.data.frame(train.train[as.vector(createDataPartition(y = training$classe, p = scale, list = F))]))
+
+models$rf$conf <- confusionMatrix(train.test$classe, predict(object = models$rf$model, newdata = train.test)) 
+
+models$gbm$model <- train(classe ~ ., method = "gbm", preProcess = "pca", data = as.data.frame(train.train[as.vector(createDataPartition(y = training$classe, p = scale, list = F))]))
+
+models$rf$conf <- confusionMatrix(train.test$classe, predict(object = models$gbm$model, newdata = train.test))
 
 ```
 
@@ -73,7 +80,7 @@ models$gmb$model <- train(classe ~ ., method = "gbm", data=train.train, preProce
 # Save and load training models
 
 saveRDS(models, file="models.rds")
-models = readRDS("models.rds")
+models <- readRDS("models.rds")
 
 ```
 
