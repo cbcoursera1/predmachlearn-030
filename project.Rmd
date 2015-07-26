@@ -12,7 +12,7 @@ output: html_document
 library(data.table)
 library(caret)
 library(doParallel)
-registerDoParallel(cores=2)
+registerDoParallel(cores=36) # EC2 c4.8xlarge
 
 # Seed
 
@@ -20,15 +20,16 @@ set.seed(8675309)
 
 # Scale of models
 
-scale <- 0.01
+scale <- 0.01 # low for testing purposes
 
-# Write solutions
  
 pml_write_files = function(x){
-  n = length(x)
+  n = length(x[, classe])
+  print(class(x))
   for(i in 1:n){
-    filename = paste0("solutions/problem_id_",i,".txt")
-    write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
+    filename = paste0("problem_id_",x[i, problem_id], ".txt")
+    print(paste0("problem_id_",x[i, problem_id], ".txt"))
+    write.table(x[i, classe], file=filename, quote=FALSE, row.names=FALSE, col.names=FALSE)
   }
 }
 
@@ -53,7 +54,6 @@ training$classe <- as.factor(training$classe)
 # Get rid of new window data in training
 
 training <- training["no"]
-
 setkey(training, V1)
 setkey(testing, V1)
 
@@ -75,13 +75,13 @@ models <- list("rf" = list(model = c()))
 
 # Try training for fun
 
-models$rfPCA$model <- train(classe ~ ., method = "rf", preProcess = "pca", data = as.data.frame(train.train[as.vector(createDataPartition(y = train.train$classe, p = scale, list = F))]))
+models$rf$model <- train(classe ~ ., method = "rf", trControl = trainControl(method = "cv"), data = as.data.frame(train.train[as.vector(createDataPartition(y = train.train$classe, p = scale, list = F))]))
 
-models$rfPCA$conf <- confusionMatrix(train.test$classe, predict(object = models$rfPCA$model, newdata = train.test)) 
+models$rf$conf <- confusionMatrix(train.test$classe, predict(object = models$rf$model, newdata = train.test[, c(1:53), with = F])) 
 
-models$gbmPCA$model <- train(classe ~ ., method = "gbm", preProcess = "pca", data = as.data.frame(train.train[as.vector(createDataPartition(y = train.train$classe, p = scale, list = F))]))
+models$gbm$model <- train(classe ~ ., method = "gbm", data = as.data.frame(train.train[as.vector(createDataPartition(y = train.train$classe, p = scale, list = F))]))
 
-models$gbmPCA$conf <- confusionMatrix(train.test$classe, predict(object = models$gbmPCA$model, newdata = train.test))
+models$gbm$conf <- confusionMatrix(train.test$classe, predict(object = models$gbm$model, newdata = train.test[, c(1:53), with = F]))
 
 ```
 
@@ -98,7 +98,9 @@ models <- readRDS("models.rds")
 
 # Solutions
 
-testing$classe <- predict(object = models$rfPCA$model, newdata = testing)
+# testing$classe <- predict(object = models$rf$model, newdata = testing)
+
+testing$classe <- predict(object = models$gbm$model, newdata = testing)
 
 pml_write_files(testing[, classe])
 
