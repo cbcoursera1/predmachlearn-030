@@ -5,14 +5,23 @@ date: "Saturday, July 11, 2015"
 output: html_document
 ---
 
-```{r}
+```{r, echo = F}
+
+# Code allowing for figures dynamically in Appendix
+
+library(knitr)
+opts_chunk$set(echo = F, warnings = F, message = F, comment = F, include = T, cache = F)
+
+```
+
+```{r, 1}
 
 # Libraries
 
 library(data.table)
 library(caret)
-library(doParallel)
-registerDoParallel(cores=36) # EC2 c4.8xlarge
+# library(doParallel) # run on EC2
+# registerDoParallel(cores=36) # run on EC2
 
 # Seed
 
@@ -20,22 +29,27 @@ set.seed(8675309)
 
 # Scale of models
 
-scale <- 0.01 # low for testing purposes
+scale <- 0.005 # EC2 c4.8xlarge == 1, laptop == 0.01 (testing)
 
  
 pml_write_files = function(x){
   n = length(x[, classe])
-  print(class(x))
+  # print(class(x))
   for(i in 1:n){
     filename = paste0("problem_id_",x[i, problem_id], ".txt")
-    print(paste0("problem_id_",x[i, problem_id], ".txt"))
+    # print(paste0("problem_id_",x[i, problem_id], ".txt"))
     write.table(x[i, classe], file=filename, quote=FALSE, row.names=FALSE, col.names=FALSE)
   }
 }
 
 ```
 
-```{r}
+# Objective
+
+Build a model from a series of gyroscope and accelerometer measurements which predicts the manner in which a subject performed an exercise.
+
+
+```{r, 2}
 
 # Get data
 
@@ -59,7 +73,7 @@ setkey(testing, V1)
 
 # Segment out applicable variables in training
 
-training <- training[, c(3, 8:11, 37:49, 60:68, 84:86, 102, 113:124, 140, 151:160), with = F]
+training <- training[, c(8:11, 37:49, 60:68, 84:86, 102, 113:124, 140, 151:160), with = F]
 
 # Split training into train and test
 
@@ -69,7 +83,19 @@ train.test <- training[as.vector(-inTrain)]
 
 ```
 
-```{r}
+# The Data
+
+The data for this project is contributed from a study of human motion during exercise, as measured by a variety of gyroscopic and accelerometers attached to several subjects. The data is delivered in a training set (for building the model) and a testing set (for evaluating the model's accuracy).
+
+Measurements were taken over time, and presented as points-in-time, as summaries of "windows" of time that were relevant for the original experiment, and as calculations done on those windows. Only the first of these three types of data will be valuable for our analysis, so the others were dropped.
+
+Additionally time-series information was removed, because we are considering only point-in-time. Subject names were also removed to ensure that the model would be extrapolatable to a broader population and would not be over influenced by each subjects' own particular way of movement.
+
+The training data was separated into two groups - a training group representing 60% of observations, and a validation group representing 40% of observations.
+
+The data on its own isn't particularly significant to explore. It's composed of obscure observations that are best addresed by a algorithm.
+
+```{r, 3}
 
 models <- list("rf" = list(model = c()))
 
@@ -79,13 +105,41 @@ models$rf$model <- train(classe ~ ., method = "rf", trControl = trainControl(met
 
 models$rf$conf <- confusionMatrix(train.test$classe, predict(object = models$rf$model, newdata = train.test[, c(1:53), with = F])) 
 
-models$gbm$model <- train(classe ~ ., method = "gbm", data = as.data.frame(train.train[as.vector(createDataPartition(y = train.train$classe, p = scale, list = F))]))
+#models$gbm$model <- train(classe ~ ., method = "gbm", data = as.data.frame(train.train[as.vector(createDataPartition(y = train.train$classe, p = scale, list = F))]))
 
-models$gbm$conf <- confusionMatrix(train.test$classe, predict(object = models$gbm$model, newdata = train.test[, c(1:53), with = F]))
+#models$gbm$conf <- confusionMatrix(train.test$classe, predict(object = models$gbm$model, newdata = train.test[, c(1:53), with = F]))
 
 ```
 
+# Building The Model
+
+RandomForest was considered first, as it is particularly relevant for categorical prediction and generally considered a strong method.
+
+A RandomForest model was built with crossvalidation via resampling, resulting in XXXXXXXXXXXXXXXXXX
+
 ```{r}
+
+plot(models$rf$model)
+
+models$rf$model
+
+```
+
+Resampling showed a high degree of accuracy within the training set.
+
+Comparing against the validation set, there was also a high degree of accuracy:
+
+```{r}
+
+models$rf$conf
+
+```
+
+
+
+
+
+```{r, 4}
 
 # Save and load training models
 
@@ -94,19 +148,26 @@ models <- readRDS("models.rds")
 
 ```
 
-```{r}
+```{r, 5}
 
 # Solutions
 
-# testing$classe <- predict(object = models$rf$model, newdata = testing)
+testing$classe <- predict(object = models$rf$model, newdata = testing)
 
-testing$classe <- predict(object = models$gbm$model, newdata = testing)
+# testing$classe <- predict(object = models$gbm$model, newdata = testing)
 
-pml_write_files(testing[, classe])
+pml_write_files(testing)
 
 ```
 
 # APPENDIX
+
+
+```{r}
+
+opts_chunk$set(include = F)
+
+```
 
 Citation:
 
