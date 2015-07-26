@@ -10,7 +10,7 @@ output: html_document
 # Code allowing for figures dynamically in Appendix
 
 library(knitr)
-opts_chunk$set(echo = F, warnings = F, message = F, comment = F, include = T, cache = F)
+opts_chunk$set(echo = F, warnings = F, message = F, include = T, cache = F)
 
 ```
 
@@ -20,8 +20,8 @@ opts_chunk$set(echo = F, warnings = F, message = F, comment = F, include = T, ca
 
 library(data.table)
 library(caret)
-# library(doParallel) # run on EC2
-# registerDoParallel(cores=36) # run on EC2
+library(doParallel) # run on EC2
+registerDoParallel(cores=36) # run on EC2
 
 # Seed
 
@@ -29,7 +29,9 @@ set.seed(8675309)
 
 # Scale of models
 
-scale <- 0.005 # EC2 c4.8xlarge == 1, laptop == 0.01 (testing)
+# scale <- 0.005 # laptop (testing)
+scale <- 1 # EC2 c4.8xlarge
+
 
  
 pml_write_files = function(x){
@@ -101,7 +103,11 @@ models <- list("rf" = list(model = c()))
 
 # Try training for fun
 
-models$rf$model <- train(classe ~ ., method = "rf", trControl = trainControl(method = "cv"), data = as.data.frame(train.train[as.vector(createDataPartition(y = train.train$classe, p = scale, list = F))]))
+seeds <- vector(mode = "list", length = 11)
+for(i in 1:10) seeds[[i]] <- c(i, i+100, i+1000)
+seeds[[11]] <- 8675309
+
+models$rf$model <- train(classe ~ ., method = "rf", trControl = trainControl(method = "cv", seeds = seeds), data = as.data.frame(train.train[as.vector(createDataPartition(y = train.train$classe, p = scale, list = F))]))
 
 models$rf$conf <- confusionMatrix(train.test$classe, predict(object = models$rf$model, newdata = train.test[, c(1:53), with = F])) 
 
@@ -115,7 +121,7 @@ models$rf$conf <- confusionMatrix(train.test$classe, predict(object = models$rf$
 
 RandomForest was considered first, as it is particularly relevant for categorical prediction and generally considered a strong method.
 
-A RandomForest model was built with crossvalidation via resampling, resulting in XXXXXXXXXXXXXXXXXX
+A RandomForest model was built with crossvalidation via resampling, resulting in a very tidly accurate model.
 
 ```{r}
 
@@ -125,7 +131,7 @@ models$rf$model
 
 ```
 
-Resampling showed a high degree of accuracy within the training set.
+Resampling showed a high degree of accuracy within the training set, with optimal accuracy achieved when utilizing 27 of the 52 predictors.
 
 Comparing against the validation set, there was also a high degree of accuracy:
 
@@ -135,18 +141,7 @@ models$rf$conf
 
 ```
 
-
-
-
-
-```{r, 4}
-
-# Save and load training models
-
-saveRDS(models, file="models.rds")
-models <- readRDS("models.rds")
-
-```
+0.99 accuracy in crossvalidation when building the model matches 0.99 accuracy when using a confusionMatrix to compare against the validation set. This indicates that the model is extremely accurate and not overfitted.
 
 ```{r, 5}
 
@@ -159,6 +154,22 @@ testing$classe <- predict(object = models$rf$model, newdata = testing)
 pml_write_files(testing)
 
 ```
+
+# Outcome
+
+In the end, the model correctly predicted 100% of the testing data - success.
+
+
+```{r, 4}
+
+# Save and load training models
+
+saveRDS(models, file="models.rds")
+models <- readRDS("models.rds")
+
+```
+
+
 
 # APPENDIX
 
